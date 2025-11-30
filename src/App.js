@@ -1,100 +1,112 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "./App.css";
 import LoginPage from "./LoginPage";
 import SignupPage from "./SignupPage";
 
 function App() {
-  const [page, setPage] = useState("login");
-  const [role, setRole] = useState("");
-  const [currentUserName, setCurrentUserName] = useState("");
+  const [page, setPage] = useState("login"); // "login" | "signup" | "dashboard"
+  const [currentUser, setCurrentUser] = useState(null); // {id,name,email,password,role}
 
-  // ---------- STUDENT ACHIEVEMENT DATA ----------
-  const [achievements, setAchievements] = useState([
-    {
-      id: 1,
-      studentName: "Girish",
-      activity: "Intercollege Coding Hackathon",
-      category: "Award",
-      level: "National",
-      date: "2025-11-10",
-      description: "Won 2nd place in national-level hackathon.",
-    },
-    {
-      id: 2,
-      studentName: "Karthik",
-      activity: "Sports Meet - 100m Running",
-      category: "Participation",
-      level: "College",
-      date: "2025-09-12",
-      description: "Participated in 100m sprint representing college.",
-    },
-    {
-      id: 3,
-      studentName: "Manoj",
-      activity: "Technical Quiz Competition",
-      category: "Award",
-      level: "Intercollege",
-      date: "2025-08-20",
-      description: "Won 1st prize in intercollege technical quiz.",
-    },
-    {
-      id: 4,
-      studentName: "Rahul",
-      activity: "Cultural Fest - Singing Competition",
-      category: "Recognition",
-      level: "College",
-      date: "2025-07-18",
-      description: "Recognized as one of the top performers in singing.",
-    },
-    {
-      id: 5,
-      studentName: "Sai Kumar",
-      activity: "Robotics Workshop",
-      category: "Participation",
-      level: "College",
-      date: "2025-06-15",
-      description: "Participated in hands-on robotics workshop.",
-    },
-    {
-      id: 6,
-      studentName: "Vijay",
-      activity: "State Level Cricket Tournament",
-      category: "Award",
-      level: "State",
-      date: "2025-05-10",
-      description: "Represented college and won Runner-Up trophy.",
+  // ------- USERS (stored in localStorage) -------
+  const [users, setUsers] = useState(() => {
+    const saved = localStorage.getItem("users");
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // ------- ACHIEVEMENTS -------
+  const [achievements, setAchievements] = useState(() => {
+    const saved = localStorage.getItem("achievements");
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // ------- PAYMENTS (demo payment records) -------
+  const [payments, setPayments] = useState(() => {
+    const saved = localStorage.getItem("payments");
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // ------- CHATS (messages) -------
+  const [messages, setMessages] = useState(() => {
+    const saved = localStorage.getItem("messages");
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // sync to localStorage
+  useEffect(() => {
+    localStorage.setItem("users", JSON.stringify(users));
+  }, [users]);
+
+  useEffect(() => {
+    localStorage.setItem("achievements", JSON.stringify(achievements));
+  }, [achievements]);
+
+  useEffect(() => {
+    localStorage.setItem("payments", JSON.stringify(payments));
+  }, [payments]);
+
+  useEffect(() => {
+    localStorage.setItem("messages", JSON.stringify(messages));
+  }, [messages]);
+
+  const generateId = () =>
+    Date.now().toString() + Math.random().toString(36).slice(2);
+
+  // -------- AUTH: SIGNUP / LOGIN / LOGOUT --------
+  const handleSignup = (newUser) => {
+    const email = newUser.email.trim().toLowerCase();
+
+    const exists = users.some(
+      (u) => u.email.toLowerCase() === email
+    );
+    if (exists) {
+      alert("This email is already registered. Please login instead.");
+      return;
     }
-  ]);
 
-  // ---------- AUTH HANDLERS ----------
-  const handleLogin = (data) => {
-    setRole(data.role);
-    setCurrentUserName(data.name);
+    const userWithId = {
+      id: generateId(),
+      name: newUser.name.trim(),
+      email,
+      password: newUser.password,
+      role: newUser.role, // "admin" or "student"
+    };
+
+    setUsers((prev) => [...prev, userWithId]);
+    alert("Account created! You can login now.");
+    setPage("login");
+  };
+
+  const handleLogin = ({ email, password }) => {
+    const cleanEmail = email.trim().toLowerCase();
+
+    const found = users.find(
+      (u) =>
+        u.email.toLowerCase() === cleanEmail && u.password === password
+    );
+
+    if (!found) {
+      alert("Invalid email or password");
+      return;
+    }
+
+    setCurrentUser(found);
     setPage("dashboard");
   };
 
-  const handleSignup = () => {
-    alert("Signup successful! Please login now.");
-    setPage("login");
-  };
-
   const handleLogout = () => {
-    setRole("");
-    setCurrentUserName("");
+    setCurrentUser(null);
     setPage("login");
   };
 
-  // ---------- ADMIN ACTIONS ----------
-  const handleAddAchievement = (newAchievement) => {
-    setAchievements((prev) => [
-      ...prev,
-      { ...newAchievement, id: Date.now() },
-    ]);
+  // -------- ACHIEVEMENTS HANDLERS (ADMIN) --------
+  const handleAddAchievement = (data) => {
+    const id = generateId();
+    setAchievements((prev) => [...prev, { id, ...data }]);
   };
 
-  const handleUpdateAchievement = (updatedAchievement) => {
+  const handleUpdateAchievement = (updated) => {
     setAchievements((prev) =>
-      prev.map((a) => (a.id === updatedAchievement.id ? updatedAchievement : a))
+      prev.map((a) => (a.id === updated.id ? updated : a))
     );
   };
 
@@ -102,25 +114,52 @@ function App() {
     setAchievements((prev) => prev.filter((a) => a.id !== id));
   };
 
-  const showAuth = page === "login" || page === "signup";
+  // -------- PAYMENTS HANDLER (DEMO) --------
+  const handleStudentPayment = ({ studentName, studentEmail, amount, purpose }) => {
+    const record = {
+      id: generateId(),
+      studentName,
+      studentEmail: studentEmail.toLowerCase(),
+      amount,
+      purpose,
+      status: "Success (Demo)",
+      timestamp: new Date().toLocaleString(),
+    };
+    setPayments((prev) => [record, ...prev]);
+    alert("Demo payment completed! (No real money processed)");
+  };
+
+  // -------- CHAT HANDLER --------
+  const handleSendMessage = ({ from, to, text }) => {
+    if (!text.trim()) return;
+    const msg = {
+      id: generateId(),
+      from,
+      to,
+      text: text.trim(),
+      time: new Date().toLocaleTimeString(),
+    };
+    setMessages((prev) => [...prev, msg]);
+  };
+
+  const isAuthPage = page === "login" || page === "signup";
 
   return (
     <div className="app-root">
       <div className="background-layer" />
 
-      {/* ------------------ LOGIN / SIGNUP ------------------ */}
-      {showAuth ? (
+      {isAuthPage ? (
+        // -------- LOGIN / SIGNUP SCREENS --------
         <div className="auth-container">
-
           <div className="brand-side">
             <h1 className="brand-title">Extracurricular Achievement Portal</h1>
             <p className="brand-text">
               Track awards, recognitions and participation beyond academics.
             </p>
             <ul className="brand-list">
-              <li>Admins manage student achievements</li>
+              <li>Admins record and manage achievements</li>
               <li>Students view their own achievements</li>
-              <li>Built complete using React</li>
+              <li>Includes demo payments, chats & dashboard</li>
             </ul>
           </div>
 
@@ -139,26 +178,32 @@ function App() {
           </div>
         </div>
       ) : (
-        /* ------------------ DASHBOARD ------------------ */
+        // -------- DASHBOARD --------
         <div className="dashboard-root">
           <Header />
-          <TopBar
-            role={role}
-            currentUserName={currentUserName}
-            onLogout={handleLogout}
-          />
+          <TopBar currentUser={currentUser} onLogout={handleLogout} />
 
-          {role === "admin" ? (
+          {currentUser?.role === "admin" ? (
             <AdminDashboard
               achievements={achievements}
+              users={users}
+              payments={payments}
+              messages={messages}
+              currentUser={currentUser}
               onAdd={handleAddAchievement}
               onUpdate={handleUpdateAchievement}
               onDelete={handleDeleteAchievement}
+              onSendMessage={handleSendMessage}
             />
           ) : (
             <StudentDashboard
               achievements={achievements}
-              currentUserName={currentUserName}
+              currentUser={currentUser}
+              users={users}
+              payments={payments}
+              messages={messages}
+              onPay={handleStudentPayment}
+              onSendMessage={handleSendMessage}
             />
           )}
         </div>
@@ -180,12 +225,19 @@ function Header() {
 }
 
 /* ------------------ TOP BAR ------------------ */
-function TopBar({ role, currentUserName, onLogout }) {
+function TopBar({ currentUser, onLogout }) {
+  if (!currentUser) return null;
   return (
     <div className="topbar">
-      <span>
-        Logged in as <strong>{currentUserName}</strong> ({role})
-      </span>
+      <div>
+        <span>
+          Logged in as <strong>{currentUser.name}</strong> (
+          {currentUser.role})
+        </span>
+        <div style={{ fontSize: "0.8rem", color: "#cbd5f5" }}>
+          {currentUser.email}
+        </div>
+      </div>
       <button className="btn small outline" onClick={onLogout}>
         Logout
       </button>
@@ -194,22 +246,37 @@ function TopBar({ role, currentUserName, onLogout }) {
 }
 
 /* ------------------ ADMIN DASHBOARD ------------------ */
-function AdminDashboard({ achievements, onAdd, onUpdate, onDelete }) {
+function AdminDashboard({
+  achievements,
+  users,
+  payments,
+  messages,
+  currentUser,
+  onAdd,
+  onUpdate,
+  onDelete,
+  onSendMessage,
+}) {
   const [search, setSearch] = useState("");
 
   const filtered = achievements.filter((a) =>
-    a.studentName.toLowerCase().includes(search.toLowerCase())
+    (a.studentName || "")
+      .toLowerCase()
+      .includes(search.trim().toLowerCase())
   );
+
+  const studentUsers = users.filter((u) => u.role === "student");
 
   return (
     <div className="dashboard">
       <h3 className="section-title">Admin Panel</h3>
 
       <div className="grid-2">
-        <AchievementForm onAdd={onAdd} />
-        <AdminSummary achievements={achievements} />
+        <AchievementForm onAdd={onAdd} users={users} />
+        <AdminSummary achievements={achievements} payments={payments} />
       </div>
 
+      {/* Achievements table */}
       <div className="card">
         <div className="table-header">
           <h4>All Achievements</h4>
@@ -227,22 +294,141 @@ function AdminDashboard({ achievements, onAdd, onUpdate, onDelete }) {
           onDelete={onDelete}
         />
       </div>
+
+      {/* Payments overview */}
+      <div className="card" style={{ marginTop: "1rem" }}>
+        <h4>Recent Payments (Demo)</h4>
+        {payments.length === 0 ? (
+          <p>No payments yet.</p>
+        ) : (
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Student</th>
+                <th>Email</th>
+                <th>Purpose</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th>Time</th>
+              </tr>
+            </thead>
+            <tbody>
+              {payments.map((p) => (
+                <tr key={p.id}>
+                  <td>{p.studentName}</td>
+                  <td>{p.studentEmail}</td>
+                  <td>{p.purpose}</td>
+                  <td>{p.amount}</td>
+                  <td>{p.status}</td>
+                  <td>{p.timestamp}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Registered Students (students only, no admins) */}
+      <div className="card" style={{ marginTop: "1rem" }}>
+        <h4>Registered Students</h4>
+
+        {studentUsers.length === 0 ? (
+          <p>No students registered yet.</p>
+        ) : (
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>College Email</th>
+                <th>Role</th>
+              </tr>
+            </thead>
+            <tbody>
+              {studentUsers.map((u) => (
+                <tr key={u.id}>
+                  <td>{u.name}</td>
+                  <td>{u.email}</td>
+                  <td>{u.role}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Chat with students */}
+      <div className="card" style={{ marginTop: "1rem" }}>
+        <h4>Chat with Students</h4>
+        <ChatPanel
+          mode="admin"
+          currentUser={currentUser}
+          users={users}
+          messages={messages}
+          onSend={onSendMessage}
+        />
+      </div>
     </div>
   );
 }
 
 /* ------------------ STUDENT DASHBOARD ------------------ */
-function StudentDashboard({ achievements, currentUserName }) {
+function StudentDashboard({
+  achievements,
+  currentUser,
+  users,
+  payments,
+  messages,
+  onPay,
+  onSendMessage,
+}) {
+  const normalize = (s) => (s || "").trim().toLowerCase();
+
   const mine = achievements.filter(
-    (a) => a.studentName.toLowerCase() === currentUserName.toLowerCase()
+    (a) => normalize(a.studentEmail) === normalize(currentUser.email)
+  );
+
+  const myPayments = payments.filter(
+    (p) => normalize(p.studentEmail) === normalize(currentUser.email)
   );
 
   return (
     <div className="dashboard">
       <h3 className="section-title">My Dashboard</h3>
-      <StudentSummary achievements={mine} />
 
+      <StudentSummary achievements={mine} payments={myPayments} />
+
+      {/* Payment card */}
       <div className="card">
+        <h4>Premium Features & Certificates (Demo Payment)</h4>
+        <p>
+          Pay once to unlock premium features such as downloadable certificates
+          and priority verification. This is a demo payment – no real money is
+          processed.
+        </p>
+        <button
+          className="btn primary"
+          onClick={() =>
+            onPay({
+              studentName: currentUser.name,
+              studentEmail: currentUser.email,
+              amount: "₹499",
+              purpose: "Premium / Certificate Access",
+            })
+          }
+        >
+          Pay ₹499 (Demo)
+        </button>
+
+        {myPayments.length > 0 && (
+          <div style={{ marginTop: "1rem", fontSize: "0.9rem" }}>
+            <strong>Last payment status:</strong>{" "}
+            {myPayments[0].status} on {myPayments[0].timestamp}
+          </div>
+        )}
+      </div>
+
+      {/* My achievements */}
+      <div className="card" style={{ marginTop: "1rem" }}>
         <h4>My Achievements</h4>
         {mine.length === 0 ? (
           <p>No achievements yet. Please contact admin.</p>
@@ -250,14 +436,129 @@ function StudentDashboard({ achievements, currentUserName }) {
           <AchievementList achievements={mine} />
         )}
       </div>
+
+      {/* Chat with admin */}
+      <div className="card" style={{ marginTop: "1rem" }}>
+        <h4>Chat with Admin</h4>
+        <ChatPanel
+          mode="student"
+          currentUser={currentUser}
+          users={users}
+          messages={messages}
+          onSend={onSendMessage}
+        />
+      </div>
     </div>
   );
 }
 
-/* ------------------ ADD ACHIEVEMENT FORM ------------------ */
-function AchievementForm({ onAdd }) {
+/* ------------------ CHAT PANEL (ADMIN / STUDENT) ------------------ */
+function ChatPanel({ mode, currentUser, users, messages, onSend }) {
+  const [selectedEmail, setSelectedEmail] = useState("");
+  const [text, setText] = useState("");
+
+  const adminUsers = users.filter((u) => u.role === "admin");
+  const studentUsers = users.filter((u) => u.role === "student");
+
+  // default chat target
+  useEffect(() => {
+    if (mode === "admin" && !selectedEmail && studentUsers.length > 0) {
+      setSelectedEmail(studentUsers[0].email);
+    }
+    if (mode === "student" && !selectedEmail && adminUsers.length > 0) {
+      setSelectedEmail(adminUsers[0].email);
+    }
+  }, [mode, selectedEmail, adminUsers, studentUsers]);
+
+  if (mode === "student" && adminUsers.length === 0) {
+    return <p>No admin account available to chat with.</p>;
+  }
+  if (mode === "admin" && studentUsers.length === 0) {
+    return <p>No students registered to chat with.</p>;
+  }
+
+  const targetEmail = selectedEmail;
+
+  const conversation = messages.filter(
+    (m) =>
+      (m.from === currentUser.email && m.to === targetEmail) ||
+      (m.from === targetEmail && m.to === currentUser.email)
+  );
+
+  const getName = (email) =>
+    users.find((u) => u.email === email)?.name || email;
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!text.trim()) return;
+    onSend({ from: currentUser.email, to: targetEmail, text });
+    setText("");
+  };
+
+  return (
+    <div className="chat-panel">
+      {mode === "admin" && (
+        <div className="form-group">
+          <label>Select student</label>
+          <select
+            value={selectedEmail}
+            onChange={(e) => setSelectedEmail(e.target.value)}
+          >
+            {studentUsers.map((s) => (
+              <option key={s.id} value={s.email}>
+                {s.name} ({s.email})
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+      {mode === "student" && (
+        <p style={{ marginBottom: "0.5rem", fontSize: "0.9rem" }}>
+          Chatting with{" "}
+          <strong>{getName(selectedEmail)} ({selectedEmail})</strong>
+        </p>
+      )}
+
+      <div className="chat-box">
+        {conversation.length === 0 ? (
+          <p className="chat-empty">No messages yet. Start the conversation!</p>
+        ) : (
+          conversation.map((m) => (
+            <div
+              key={m.id}
+              className={
+                m.from === currentUser.email
+                  ? "chat-msg chat-msg-me"
+                  : "chat-msg chat-msg-them"
+              }
+            >
+              <div className="chat-msg-text">{m.text}</div>
+              <div className="chat-msg-meta">
+                {getName(m.from)} • {m.time}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      <form onSubmit={handleSubmit} className="chat-input-row">
+        <input
+          placeholder="Type your message..."
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+        />
+        <button className="btn small primary" type="submit">
+          Send
+        </button>
+      </form>
+    </div>
+  );
+}
+
+/* ------------------ ADD ACHIEVEMENT FORM (ADMIN) ------------------ */
+function AchievementForm({ onAdd, users }) {
   const [formData, setFormData] = useState({
-    studentName: "",
+    studentEmail: "",
     activity: "",
     category: "Participation",
     level: "College",
@@ -273,15 +574,40 @@ function AchievementForm({ onAdd }) {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    if (!formData.studentName || !formData.activity || !formData.date) {
-      alert("Please fill required fields");
+    if (
+      !formData.studentEmail ||
+      !formData.activity ||
+      !formData.date
+    ) {
+      alert("Please select student, activity and date.");
       return;
     }
 
-    onAdd(formData);
+    const student = users.find(
+      (u) =>
+        u.role === "student" &&
+        u.email.toLowerCase() === formData.studentEmail.toLowerCase()
+    );
+
+    if (!student) {
+      alert("Selected student not found.");
+      return;
+    }
+
+    const payload = {
+      studentName: student.name,
+      studentEmail: student.email.toLowerCase(),
+      activity: formData.activity,
+      category: formData.category,
+      level: formData.level,
+      date: formData.date,
+      description: formData.description,
+    };
+
+    onAdd(payload);
 
     setFormData({
-      studentName: "",
+      studentEmail: "",
       activity: "",
       category: "Participation",
       level: "College",
@@ -290,19 +616,32 @@ function AchievementForm({ onAdd }) {
     });
   };
 
+  const studentOptions = users.filter((u) => u.role === "student");
+
   return (
     <div className="card">
       <h4>Add Achievement</h4>
 
       <form onSubmit={handleSubmit} className="form">
         <div className="form-group">
-          <label>Student Name</label>
-          <input
-            name="studentName"
-            placeholder="Enter student name"
-            value={formData.studentName}
+          <label>Select Student</label>
+          <select
+            name="studentEmail"
+            value={formData.studentEmail}
             onChange={handleChange}
-          />
+          >
+            <option value="">-- Select student --</option>
+            {studentOptions.map((s) => (
+              <option key={s.id} value={s.email}>
+                {s.name} ({s.email})
+              </option>
+            ))}
+          </select>
+          {studentOptions.length === 0 && (
+            <div style={{ fontSize: "0.8rem", color: "#f97373" }}>
+              No student accounts yet. Ask students to sign up first.
+            </div>
+          )}
         </div>
 
         <div className="form-group">
@@ -372,7 +711,7 @@ function AchievementForm({ onAdd }) {
 }
 
 /* ------------------ SUMMARY CARDS ------------------ */
-function AdminSummary({ achievements }) {
+function AdminSummary({ achievements, payments }) {
   const total = achievements.length;
   const awards = achievements.filter((a) => a.category === "Award").length;
   const recognition = achievements.filter(
@@ -382,21 +721,33 @@ function AdminSummary({ achievements }) {
     (a) => a.category === "Participation"
   ).length;
 
+  const totalPayments = payments.length;
+  const totalAmount = payments.reduce((sum, p) => {
+    // amount like "₹499" -> number 499 if possible
+    const num = parseInt(
+      String(p.amount).replace(/[^0-9]/g, ""),
+      10
+    );
+    return sum + (isNaN(num) ? 0 : num);
+  }, 0);
+
   return (
     <div className="card">
       <h4>Summary</h4>
 
       <div className="summary-grid">
-        <SummaryCard label="Total" value={total} />
+        <SummaryCard label="Total Achievements" value={total} />
         <SummaryCard label="Awards" value={awards} />
         <SummaryCard label="Recognition" value={recognition} />
         <SummaryCard label="Participation" value={participation} />
+        <SummaryCard label="Payments (Demo)" value={totalPayments} />
+        <SummaryCard label="Amount (Approx)" value={`₹${totalAmount}`} />
       </div>
     </div>
   );
 }
 
-function StudentSummary({ achievements }) {
+function StudentSummary({ achievements, payments }) {
   const total = achievements.length;
   const awards = achievements.filter((a) => a.category === "Award").length;
   const recognition = achievements.filter(
@@ -415,6 +766,7 @@ function StudentSummary({ achievements }) {
         <SummaryCard label="Awards" value={awards} />
         <SummaryCard label="Recognition" value={recognition} />
         <SummaryCard label="Participation" value={participation} />
+        <SummaryCard label="Payments" value={payments.length} />
       </div>
     </div>
   );
@@ -444,11 +796,16 @@ function AchievementTable({ achievements, onUpdate, onDelete }) {
     onUpdate({ ...achievement, activity, description });
   };
 
+  if (achievements.length === 0) {
+    return <p>No records yet.</p>;
+  }
+
   return (
     <table className="table">
       <thead>
         <tr>
           <th>Student</th>
+          <th>Student Email</th>
           <th>Activity</th>
           <th>Category</th>
           <th>Level</th>
@@ -462,6 +819,7 @@ function AchievementTable({ achievements, onUpdate, onDelete }) {
         {achievements.map((a) => (
           <tr key={a.id}>
             <td>{a.studentName}</td>
+            <td>{a.studentEmail}</td>
             <td>{a.activity}</td>
             <td>{a.category}</td>
             <td>{a.level}</td>

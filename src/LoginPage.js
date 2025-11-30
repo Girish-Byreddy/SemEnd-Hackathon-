@@ -1,20 +1,41 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 function LoginPage({ onLogin, goToSignup }) {
-  const [role, setRole] = useState("student");
-  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  // simple CAPTCHA
+  const [captchaQuestion, setCaptchaQuestion] = useState("");
+  const [captchaAnswer, setCaptchaAnswer] = useState(null);
+  const [captchaInput, setCaptchaInput] = useState("");
+
+  const generateCaptcha = () => {
+    const a = Math.floor(Math.random() * 9) + 1;
+    const b = Math.floor(Math.random() * 9) + 1;
+    setCaptchaQuestion(`${a} + ${b} = ?`);
+    setCaptchaAnswer(a + b);
+    setCaptchaInput("");
+  };
+
+  useEffect(() => {
+    generateCaptcha();
+  }, []);
 
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    if (!name.trim() || !email.trim() || !password.trim()) {
-      alert("Please fill name, email and password");
+    if (!email.trim() || !password.trim()) {
+      alert("Please enter email and password");
       return;
     }
 
-    onLogin({ role, name: name.trim(), email, password });
+    if (parseInt(captchaInput, 10) !== captchaAnswer) {
+      alert("CAPTCHA incorrect. Please try again.");
+      generateCaptcha();
+      return;
+    }
+
+    onLogin({ email, password });
   };
 
   return (
@@ -25,24 +46,6 @@ function LoginPage({ onLogin, goToSignup }) {
       </p>
 
       <form onSubmit={handleSubmit} className="form">
-        <div className="form-group">
-          <label>Login as</label>
-          <select value={role} onChange={(e) => setRole(e.target.value)}>
-            <option value="student">Student</option>
-            <option value="admin">Admin</option>
-          </select>
-        </div>
-
-        <div className="form-group">
-          <label>Full Name</label>
-          <input
-            type="text"
-            placeholder="Enter your full name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-        </div>
-
         <div className="form-group">
           <label>College Email</label>
           <input
@@ -61,6 +64,28 @@ function LoginPage({ onLogin, goToSignup }) {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
+        </div>
+
+        {/* CAPTCHA */}
+        <div className="form-group">
+          <label>
+            CAPTCHA: <strong>{captchaQuestion}</strong>
+          </label>
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            <input
+              type="number"
+              placeholder="Answer"
+              value={captchaInput}
+              onChange={(e) => setCaptchaInput(e.target.value)}
+            />
+            <button
+              type="button"
+              className="btn small outline"
+              onClick={generateCaptcha}
+            >
+              Refresh
+            </button>
+          </div>
         </div>
 
         <button type="submit" className="btn primary full">
